@@ -10,7 +10,7 @@ const severityColors = {
 export default function App() {
   const [alerts, setAlerts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [filter, setFilter] = useState("All")
 
   useEffect(() => {
     fetch("http://localhost:5000/alerts")
@@ -19,19 +19,39 @@ export default function App() {
         setAlerts(data.alerts)
         setLoading(false)
       })
-      .catch(err => {
-        setError("Error conectando al backend")
-        setLoading(false)
-      })
   }, [])
 
+  const filtered = filter === "All" 
+    ? alerts 
+    : alerts.filter(a => a.severity === filter)
+
   if (loading) return <div style={{padding: "2rem"}}>Cargando alertas...</div>
-  if (error) return <div style={{padding: "2rem", color: "red"}}>{error}</div>
 
   return (
     <div style={{padding: "2rem", fontFamily: "Arial, sans-serif"}}>
       <h1 style={{color: "#1e293b"}}>🔵 MS Security App — Alert Dashboard</h1>
-      <p style={{color: "#64748b"}}>Total alertas: {alerts.length}</p>
+      
+      <div style={{marginBottom: "1rem", display: "flex", gap: "0.5rem"}}>
+        {["All", "Critical", "High", "Medium", "Low"].map(s => (
+          <button key={s} onClick={() => setFilter(s)}
+            style={{
+              padding: "6px 16px",
+              borderRadius: "6px",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: filter === s ? "#1e293b" : "#e2e8f0",
+              color: filter === s ? "white" : "#1e293b",
+              fontWeight: filter === s ? "bold" : "normal"
+            }}>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      <p style={{color: "#64748b"}}>
+        Mostrando {filtered.length} de {alerts.length} alertas
+      </p>
+
       <table style={{width: "100%", borderCollapse: "collapse"}}>
         <thead>
           <tr style={{backgroundColor: "#1e293b", color: "white"}}>
@@ -43,7 +63,7 @@ export default function App() {
           </tr>
         </thead>
         <tbody>
-          {alerts.map(alert => {
+          {filtered.map(alert => {
             const colors = severityColors[alert.severity] || {}
             return (
               <tr key={alert.id} style={{backgroundColor: colors.bg, borderLeft: `4px solid ${colors.border}`}}>
