@@ -11,6 +11,7 @@ export default function App() {
   const [alerts, setAlerts] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("All")
+  const [stats, setStats] = useState(null)
 
   useEffect(() => {
     fetch("http://localhost:5000/alerts")
@@ -21,8 +22,14 @@ export default function App() {
       })
   }, [])
 
-  const filtered = filter === "All" 
-    ? alerts 
+  useEffect(() => {
+    fetch("http://localhost:5000/stats")
+      .then(res => res.json())
+      .then(data => setStats(data))
+  }, [])
+
+  const filtered = filter === "All"
+    ? alerts
     : alerts.filter(a => a.severity === filter)
 
   if (loading) return <div style={{padding: "2rem"}}>Cargando alertas...</div>
@@ -30,7 +37,27 @@ export default function App() {
   return (
     <div style={{padding: "2rem", fontFamily: "Arial, sans-serif"}}>
       <h1 style={{color: "#1e293b"}}>🔵 MS Security App — Alert Dashboard</h1>
-      
+
+      {stats && (
+        <div style={{display: "flex", gap: "1rem", marginBottom: "1.5rem"}}>
+          {Object.entries(stats.by_severity).map(([severity, count]) => {
+            const colors = severityColors[severity] || {}
+            return (
+              <div key={severity} style={{
+                padding: "1rem 1.5rem",
+                borderRadius: "8px",
+                backgroundColor: colors.bg,
+                borderLeft: `4px solid ${colors.border}`,
+                minWidth: "100px"
+              }}>
+                <div style={{fontSize: "1.5rem", fontWeight: "bold", color: colors.text}}>{count}</div>
+                <div style={{fontSize: "0.85rem", color: colors.text}}>{severity}</div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       <div style={{marginBottom: "1rem", display: "flex", gap: "0.5rem"}}>
         {["All", "Critical", "High", "Medium", "Low"].map(s => (
           <button key={s} onClick={() => setFilter(s)}
