@@ -107,13 +107,6 @@ const styles = `
     transform: translateY(-2px);
   }
 
-  .severity-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-  }
-
   .severity-card .count {
     font-size: 2.2rem;
     font-weight: 800;
@@ -293,6 +286,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("All")
   const [stats, setStats] = useState(null)
+  const [wazuhAlerts, setWazuhAlerts] = useState([])
 
   useEffect(() => {
     fetch("http://localhost:5000/alerts")
@@ -304,6 +298,12 @@ export default function App() {
     fetch("http://localhost:5000/stats")
       .then(res => res.json())
       .then(data => setStats(data))
+  }, [])
+
+  useEffect(() => {
+    fetch("http://localhost:5000/wazuh/alerts")
+      .then(res => res.json())
+      .then(data => setWazuhAlerts(data.alerts || []))
   }, [])
 
   const filtered = filter === "All" ? alerts : alerts.filter(a => a.severity === filter)
@@ -322,12 +322,15 @@ export default function App() {
     <>
       <style>{styles}</style>
       <div className="dashboard">
+
+        {/* Header */}
         <div className="header">
           <div className="header-dot" />
           <h1>MS Security — Alert Dashboard</h1>
           <span className="header-badge">LIVE</span>
         </div>
 
+        {/* Severity Cards */}
         {stats && (
           <div className="severity-cards">
             {Object.entries(stats.by_severity).map(([severity, count]) => {
@@ -343,6 +346,7 @@ export default function App() {
           </div>
         )}
 
+        {/* Chart */}
         {stats && (
           <div className="chart-section">
             <div className="section-title">Distribución por Severidad</div>
@@ -352,16 +356,14 @@ export default function App() {
                 <XAxis dataKey="name" tick={{ fill: theme.textMuted, fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: theme.textMuted, fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(56,189,248,0.05)" }} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}
-                  fill={theme.accent}
-                  label={false}
-                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} fill={theme.accent} label={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         )}
 
-        <div className="table-wrap">
+        {/* Mock Alerts Table */}
+        <div className="table-wrap" style={{ marginBottom: "2rem" }}>
           <div className="table-header">
             <div className="section-title" style={{ margin: 0 }}>Alertas Recientes</div>
             <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
@@ -373,7 +375,6 @@ export default function App() {
               <span className="alert-count">{filtered.length}/{alerts.length}</span>
             </div>
           </div>
-
           <table>
             <thead>
               <tr>
@@ -409,6 +410,44 @@ export default function App() {
             </tbody>
           </table>
         </div>
+
+        {/* Wazuh Real Alerts Table */}
+        <div className="table-wrap">
+          <div className="table-header">
+            <div className="section-title" style={{ margin: 0 }}>Wazuh — Windows-Marco</div>
+            <span className="alert-count">{wazuhAlerts.length} eventos</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Agente</th>
+                <th>Nivel</th>
+                <th>Descripción</th>
+                <th>Rule ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {wazuhAlerts.map(alert => (
+                <tr key={alert.id}>
+                  <td className="id-cell">{alert.timestamp?.slice(0, 19).replace("T", " ")}</td>
+                  <td style={{ color: theme.accent }}>{alert.agent}</td>
+                  <td>
+                    <span className="severity-badge" style={{
+                      background: alert.rule_level >= 7 ? "rgba(239,68,68,0.12)" : "rgba(56,189,248,0.1)",
+                      color: alert.rule_level >= 7 ? "#f87171" : theme.accent
+                    }}>
+                      {alert.rule_level}
+                    </span>
+                  </td>
+                  <td style={{ color: theme.text }}>{alert.description}</td>
+                  <td className="id-cell">{alert.rule_id}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
       </div>
     </>
   )

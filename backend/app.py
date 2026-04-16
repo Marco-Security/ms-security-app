@@ -1,5 +1,8 @@
 ﻿from flask import Flask, jsonify
 from flask_cors import CORS
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
 CORS(app)
@@ -48,6 +51,51 @@ def stats():
         "by_status": by_status,
         "by_source": by_source
     })
+
+WAZUH_URL = "https://localhost:55000"
+WAZUH_USER = "wazuh-wui"
+WAZUH_PASS = "MyS3cr37P450r.*-"
+
+def get_wazuh_token():
+    r = requests.post(
+        f"{WAZUH_URL}/security/user/authenticate",
+        auth=(WAZUH_USER, WAZUH_PASS),
+        verify=False
+    )
+    return r.json()["data"]["token"]
+
+@app.route('/wazuh/agents', methods=['GET'])
+def wazuh_agents():
+    token = get_wazuh_token()
+    r = requests.get(
+        f"{WAZUH_URL}/agents",
+        headers={"Authorization": f"Bearer {token}"},
+        verify=False
+    )
+    return jsonify(r.json()["data"]["affected_items"])
+
+@app.route('/wazuh/alerts', methods=['GET'])
+def wazuh_alerts():
+    r = requests.get(
+        "https://localhost:9200/wazuh-alerts-*/_search",
+        auth=("admin", "SecretPassword"),
+        params={"size": 20, "sort": "timestamp:desc"},
+        verify=False
+    )
+    hits = r.json().get("hits", {}).get("hits", [])
+    alerts = []
+    for hit in hits:
+        src = hit["_source"]
+        alerts.append({
+            "id": src.get("id", ""),
+            "timestamp": src.get("timestamp", ""),
+            "agent": src.get("agent", {}).get("name", ""),
+            "rule_id": src.get("rule", {}).get("id", ""),
+            "rule_level": src.get("rule", {}).get("level", 0),
+            "description": src.get("rule", {}).get("description", ""),
+            "groups": src.get("rule", {}).get("groups", [])
+        })
+    return jsonify({"alerts": alerts, "total": len(alerts)})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
