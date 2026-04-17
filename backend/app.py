@@ -79,7 +79,15 @@ def wazuh_alerts():
     r = requests.get(
         "https://localhost:9200/wazuh-alerts-*/_search",
         auth=("admin", "SecretPassword"),
-        params={"size": 20, "sort": "timestamp:desc"},
+        json={
+            "size": 20,
+            "sort": [{"timestamp": {"order": "desc"}}],
+            "query": {
+                "range": {
+                    "rule.level": {"gte": 7}
+                }
+            }
+        },
         verify=False
     )
     hits = r.json().get("hits", {}).get("hits", [])
