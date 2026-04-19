@@ -287,6 +287,7 @@ export default function App() {
   const [filter, setFilter] = useState("All")
   const [stats, setStats] = useState(null)
   const [wazuhAlerts, setWazuhAlerts] = useState([])
+  const [wazuhFilter, setWazuhFilter] = useState(0)
 
   useEffect(() => {
     fetch("http://localhost:5000/alerts")
@@ -423,10 +424,17 @@ export default function App() {
           <div className="table-header">
             <div className="section-title" style={{ margin: 0 }}>Wazuh — Windows-Marco</div>
             <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-              <span style={{ fontFamily: "JetBrains Mono", fontSize: "0.7rem", color: theme.accent }}>
-                ↻ 30s
-              </span>
-              <span className="alert-count">{wazuhAlerts.length} eventos</span>
+              <div style={{ display: "flex", gap: "0.4rem" }}>
+                {[0, 7, 8, 9, 10, 12].map(level => (
+                  <button key={level} className={`filter-btn ${wazuhFilter === level ? "active" : ""}`}
+                    onClick={() => setWazuhFilter(level)}
+                    style={{ padding: "4px 10px" }}>
+                    {level === 0 ? "All" : `L${level}`}
+                  </button>
+                ))}
+              </div>
+              <span style={{ fontFamily: "JetBrains Mono", fontSize: "0.7rem", color: theme.accent }}>↻ 30s</span>
+              <span className="alert-count">{wazuhAlerts.filter(a => wazuhFilter === 0 || a.rule_level === wazuhFilter).length} eventos</span>
             </div>
           </div>
           <table>
@@ -440,22 +448,28 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {wazuhAlerts.map(alert => (
-                <tr key={alert.id}>
-                  <td className="id-cell">{alert.timestamp?.slice(0, 19).replace("T", " ")}</td>
-                  <td style={{ color: theme.accent }}>{alert.agent}</td>
-                  <td>
-                    <span className="severity-badge" style={{
-                      background: alert.rule_level >= 7 ? "rgba(239,68,68,0.12)" : "rgba(56,189,248,0.1)",
-                      color: alert.rule_level >= 7 ? "#f87171" : theme.accent
-                    }}>
-                      {alert.rule_level}
-                    </span>
-                  </td>
-                  <td style={{ color: theme.text }}>{alert.description}</td>
-                  <td className="id-cell">{alert.rule_id}</td>
-                </tr>
-              ))}
+              {wazuhAlerts
+                .filter(a => wazuhFilter === 0 || a.rule_level === wazuhFilter)
+                .map(alert => (
+                  <tr key={alert.id}>
+                    <td className="id-cell">{alert.timestamp?.slice(0, 19).replace("T", " ")}</td>
+                    <td style={{ color: theme.accent }}>{alert.agent}</td>
+                    <td>
+                      <span className="severity-badge" style={{
+                        background: alert.rule_level >= 10 ? "rgba(239,68,68,0.12)" :
+                                    alert.rule_level >= 8 ? "rgba(249,115,22,0.12)" :
+                                    "rgba(56,189,248,0.1)",
+                        color: alert.rule_level >= 10 ? "#f87171" :
+                               alert.rule_level >= 8 ? "#fb923c" :
+                               theme.accent
+                      }}>
+                        {alert.rule_level}
+                      </span>
+                    </td>
+                    <td style={{ color: theme.text }}>{alert.description}</td>
+                    <td className="id-cell">{alert.rule_id}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
