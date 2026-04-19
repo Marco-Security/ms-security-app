@@ -301,10 +301,17 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+  const fetchWazuhAlerts = () => {
     fetch("http://localhost:5000/wazuh/alerts")
       .then(res => res.json())
       .then(data => setWazuhAlerts(data.alerts || []))
-  }, [])
+  }
+  
+  fetchWazuhAlerts()
+  const interval = setInterval(fetchWazuhAlerts, 30000)
+  
+  return () => clearInterval(interval)
+}, [])
 
   const filtered = filter === "All" ? alerts : alerts.filter(a => a.severity === filter)
 
@@ -415,7 +422,12 @@ export default function App() {
         <div className="table-wrap">
           <div className="table-header">
             <div className="section-title" style={{ margin: 0 }}>Wazuh — Windows-Marco</div>
-            <span className="alert-count">{wazuhAlerts.length} eventos</span>
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+              <span style={{ fontFamily: "JetBrains Mono", fontSize: "0.7rem", color: theme.accent }}>
+                ↻ 30s
+              </span>
+              <span className="alert-count">{wazuhAlerts.length} eventos</span>
+            </div>
           </div>
           <table>
             <thead>
