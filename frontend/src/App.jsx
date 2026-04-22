@@ -281,6 +281,21 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null
 }
 
+const WazuhTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const color = label === "L10" || label === "L12" ? "#f87171" :
+                  label === "L8"  || label === "L9"  ? "#fb923c" : theme.accent
+    return (
+      <div className="custom-tooltip">
+        <span style={{ color }}>{label}</span>
+        <span style={{ color: theme.textMuted }}> — </span>
+        <span>{payload[0].value} eventos</span>
+      </div>
+    )
+  }
+  return null
+}
+
 export default function App() {
   const [alerts, setAlerts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -302,23 +317,28 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-  const fetchWazuhAlerts = () => {
-    fetch("http://localhost:5000/wazuh/alerts")
-      .then(res => res.json())
-      .then(data => setWazuhAlerts(data.alerts || []))
-  }
-  
-  fetchWazuhAlerts()
-  const interval = setInterval(fetchWazuhAlerts, 30000)
-  
-  return () => clearInterval(interval)
-}, [])
+    const fetchWazuhAlerts = () => {
+      fetch("http://localhost:5000/wazuh/alerts")
+        .then(res => res.json())
+        .then(data => setWazuhAlerts(data.alerts || []))
+    }
+    fetchWazuhAlerts()
+    const interval = setInterval(fetchWazuhAlerts, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const filtered = filter === "All" ? alerts : alerts.filter(a => a.severity === filter)
 
   const chartData = stats
     ? Object.entries(stats.by_severity).map(([name, value]) => ({ name, value }))
     : []
+
+  const wazuhChartData = [7, 8, 9, 10, 12].map(level => ({
+    name: `L${level}`,
+    value: wazuhAlerts.filter(a => a.rule_level === level).length
+  }))
+
+  const wazuhFiltered = wazuhAlerts.filter(a => wazuhFilter === 0 || a.rule_level === wazuhFilter)
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: theme.bg, color: theme.accent, fontFamily: "JetBrains Mono", fontSize: "0.85rem", letterSpacing: "0.1em" }}>
@@ -354,10 +374,10 @@ export default function App() {
           </div>
         )}
 
-        {/* Chart */}
+        {/* Mock Alerts Chart */}
         {stats && (
           <div className="chart-section">
-            <div className="section-title">Distribución por Severidad</div>
+            <div className="section-title">Distribución por Severidad — Mock Alerts</div>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={chartData} barSize={32}>
                 <CartesianGrid strokeDasharray="3 3" stroke={theme.border} vertical={false} />
@@ -369,6 +389,20 @@ export default function App() {
             </ResponsiveContainer>
           </div>
         )}
+
+        {/* Wazuh Chart */}
+        <div className="chart-section">
+          <div className="section-title">Distribución de Alertas Wazuh — Windows-Marco</div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={wazuhChartData} barSize={32}>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.border} vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: theme.textMuted, fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: theme.textMuted, fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<WazuhTooltip />} cursor={{ fill: "rgba(56,189,248,0.05)" }} />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]} fill={theme.accent} label={false} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
         {/* Mock Alerts Table */}
         <div className="table-wrap" style={{ marginBottom: "2rem" }}>
@@ -434,7 +468,7 @@ export default function App() {
                 ))}
               </div>
               <span style={{ fontFamily: "JetBrains Mono", fontSize: "0.7rem", color: theme.accent }}>↻ 30s</span>
-              <span className="alert-count">{wazuhAlerts.filter(a => wazuhFilter === 0 || a.rule_level === wazuhFilter).length} eventos</span>
+              <span className="alert-count">{wazuhFiltered.length} eventos</span>
             </div>
           </div>
           <table>
@@ -448,28 +482,26 @@ export default function App() {
               </tr>
             </thead>
             <tbody>
-              {wazuhAlerts
-                .filter(a => wazuhFilter === 0 || a.rule_level === wazuhFilter)
-                .map(alert => (
-                  <tr key={alert.id}>
-                    <td className="id-cell">{alert.timestamp?.slice(0, 19).replace("T", " ")}</td>
-                    <td style={{ color: theme.accent }}>{alert.agent}</td>
-                    <td>
-                      <span className="severity-badge" style={{
-                        background: alert.rule_level >= 10 ? "rgba(239,68,68,0.12)" :
-                                    alert.rule_level >= 8 ? "rgba(249,115,22,0.12)" :
-                                    "rgba(56,189,248,0.1)",
-                        color: alert.rule_level >= 10 ? "#f87171" :
-                               alert.rule_level >= 8 ? "#fb923c" :
-                               theme.accent
-                      }}>
-                        {alert.rule_level}
-                      </span>
-                    </td>
-                    <td style={{ color: theme.text }}>{alert.description}</td>
-                    <td className="id-cell">{alert.rule_id}</td>
-                  </tr>
-                ))}
+              {wazuhFiltered.map(alert => (
+                <tr key={alert.id}>
+                  <td className="id-cell">{alert.timestamp?.slice(0, 19).replace("T", " ")}</td>
+                  <td style={{ color: theme.accent }}>{alert.agent}</td>
+                  <td>
+                    <span className="severity-badge" style={{
+                      background: alert.rule_level >= 10 ? "rgba(239,68,68,0.12)" :
+                                  alert.rule_level >= 8  ? "rgba(249,115,22,0.12)" :
+                                  "rgba(56,189,248,0.1)",
+                      color: alert.rule_level >= 10 ? "#f87171" :
+                             alert.rule_level >= 8  ? "#fb923c" :
+                             theme.accent
+                    }}>
+                      {alert.rule_level}
+                    </span>
+                  </td>
+                  <td style={{ color: theme.text }}>{alert.description}</td>
+                  <td className="id-cell">{alert.rule_id}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
