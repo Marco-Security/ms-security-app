@@ -303,6 +303,7 @@ export default function App() {
   const [stats, setStats] = useState(null)
   const [wazuhAlerts, setWazuhAlerts] = useState([])
   const [wazuhFilter, setWazuhFilter] = useState(0)
+  const [lastRefresh, setLastRefresh] = useState(null)
 
   useEffect(() => {
     fetch("http://localhost:5000/alerts")
@@ -317,14 +318,17 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const fetchWazuhAlerts = () => {
-      fetch("http://localhost:5000/wazuh/alerts")
-        .then(res => res.json())
-        .then(data => setWazuhAlerts(data.alerts || []))
-    }
-    fetchWazuhAlerts()
-    const interval = setInterval(fetchWazuhAlerts, 30000)
-    return () => clearInterval(interval)
+  const fetchWazuhAlerts = () => {
+    fetch("http://localhost:5000/wazuh/alerts")
+      .then(res => res.json())
+      .then(data => {
+        setWazuhAlerts(data.alerts || [])
+        setLastRefresh(new Date().toLocaleTimeString())
+      })
+  }
+  fetchWazuhAlerts()
+  const interval = setInterval(fetchWazuhAlerts, 30000)
+  return () => clearInterval(interval)
   }, [])
 
   const filtered = filter === "All" ? alerts : alerts.filter(a => a.severity === filter)
@@ -467,8 +471,9 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <span style={{ fontFamily: "JetBrains Mono", fontSize: "0.7rem", color: theme.accent }}>↻ 30s</span>
-              <span className="alert-count">{wazuhFiltered.length} eventos</span>
+              <span style={{ fontFamily: "JetBrains Mono", fontSize: "0.7rem", color: theme.textMuted }}>
+                ↻ {lastRefresh || "--:--:--"}
+              </span>
             </div>
           </div>
           <table>
