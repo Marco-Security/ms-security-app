@@ -359,7 +359,24 @@ export default function App() {
         <div className="header">
           <div className="header-dot" />
           <h1>MS Security — Alert Dashboard</h1>
-          <span className="header-badge">LIVE</span>
+          <div style={{ marginLeft: "auto", display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            {wazuhAlerts.filter(a => a.rule_level >= 10).length > 0 && (
+              <span style={{
+                fontFamily: "JetBrains Mono",
+                fontSize: "0.7rem",
+                color: "#f87171",
+                background: "rgba(239,68,68,0.12)",
+                border: "1px solid rgba(239,68,68,0.3)",
+                padding: "4px 10px",
+                borderRadius: "4px",
+                letterSpacing: "0.08em",
+                animation: "pulse 2s infinite"
+              }}>
+                ⚠ {wazuhAlerts.filter(a => a.rule_level >= 10).length} CRÍTICO{wazuhAlerts.filter(a => a.rule_level >= 10).length > 1 ? "S" : ""}
+              </span>
+            )}
+            <span className="header-badge">LIVE</span>
+          </div>
         </div>
 
         {/* Severity Cards */}
