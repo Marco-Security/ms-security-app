@@ -344,6 +344,26 @@ export default function App() {
 
   const wazuhFiltered = wazuhAlerts.filter(a => wazuhFilter === 0 || a.rule_level === wazuhFilter)
 
+  const exportToCSV = () => {
+    const headers = ["Timestamp", "Agente", "Nivel", "Descripción", "Rule ID"]
+    const rows = wazuhFiltered.map(a => [
+      a.timestamp?.slice(0, 19).replace("T", " "),
+      a.agent,
+      a.rule_level,
+      `"${(a.description || "").replace(/"/g, '""')}"`,
+      a.rule_id
+    ])
+  
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `wazuh_alerts_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: theme.bg, color: theme.accent, fontFamily: "JetBrains Mono", fontSize: "0.85rem", letterSpacing: "0.1em" }}>
       LOADING...
@@ -488,6 +508,19 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              <button onClick={exportToCSV} style={{
+                fontFamily: "JetBrains Mono",
+                fontSize: "0.7rem",
+                color: theme.accent,
+                background: theme.accentDim,
+                border: `1px solid ${theme.accent}`,
+                padding: "4px 12px",
+                borderRadius: "4px",
+                cursor: "pointer",
+                letterSpacing: "0.08em"
+              }}>
+                ↓ EXPORT CSV
+              </button>
               <span style={{ fontFamily: "JetBrains Mono", fontSize: "0.7rem", color: theme.textMuted }}>
                 ↻ {lastRefresh || "--:--:--"}
               </span>
